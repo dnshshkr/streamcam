@@ -137,14 +137,14 @@ def get_cable_status(interface_name):
 def check_cable_periodically(server):
     while True:
         if not get_cable_status(net_interface):
-            print('Cable might have been unplugged. Stopping server')
+            print('Cable might have been unplugged. Server will be stopped')
             server.stop()
             break
         gevent.sleep(check_cable_interval)
 if __name__=='__main__':
     cam_server=WSGIServer((ip,port),app)
     camera_init()
-    time.sleep(1)
+    time.sleep(0.5)
     threading.Thread(target=run_cam,daemon=True).start()
     if show_img:
         threading.Thread(target=disp_img,daemon=True).start()
@@ -163,5 +163,5 @@ if __name__=='__main__':
                     print('Cable plugged')
                     break
                 else:
-                    print('Cable unplugged',end='\r')
+                    print('Cable unplugged')
                     start=time.time()
