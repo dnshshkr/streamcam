@@ -1,7 +1,10 @@
 from flask import Flask,Response
 import cv2
 import pypylon.pylon as py
+import gevent
 from gevent.pywsgi import WSGIServer
+import gevent
+import psutil
 import time
 import threading
 import platform
@@ -17,16 +20,19 @@ put_fps=True if config['DEFAULT']['put_fps']=='1' else False
 image=None
 camera=None
 camera_init_timeout=float(config['DEFAULT']['camera_initialization_timeout'])
+check_cable_interval=int(config['DEFAULT']['check_cable_interval'])
 fps=None
 standby=cv2.imread('standby.jpg')
 standby=standby if convert_color else cv2.cvtColor(standby,cv2.COLOR_BGR2GRAY)
 sys_platform=platform.system().lower()
 if sys_platform=='linux':
+    net_interface='eth0'
     ip=get_ip.get_ip_linux('eth0')
 elif sys_platform=='windows':
-    ip=get_ip.get_ip_windows()
+    net_interface='Ethernet'
+    #ip=get_ip.get_ip_windows()
+    ip='10.0.3.147'
 del sys_platform,platform,get_ip
-#ip='192.168.0.3'
 port=2608
 def camera_init():
     if _camera_init_child():
@@ -60,6 +66,9 @@ def _camera_init_child():
         camera.StartGrabbing(py.GrabStrategy_LatestImageOnly)
         print('Camera initialization successful')
         return True
+def close_cam():
+    camera.StopGrabbing()
+    camera.Close()
 def disp_img():
     while show_img:
         if put_fps:
@@ -163,16 +172,40 @@ def gen():
 @app.route('/stream')
 def stream():
     return Response(gen(),mimetype='multipart/x-mixed-replace; boundary=frame')
+def get_cable_status(interface_name):
+    network_info=psutil.net_if_stats()
+    if interface_name in network_info:
+        return network_info[interface_name].isup
+    else:
+        return False  # If interface is not found, consider it disconnected
+def check_cable_periodically(server):
+    while True:
+        if not get_cable_status(net_interface):
+            print('Cable might have been unplugged. Stopping server')
+            server.stop()
+            break
+        gevent.sleep(check_cable_interval)
 if __name__=='__main__':
+    cam_server=WSGIServer((ip,port),app)
     camera_init()
     time.sleep(1)
     threading.Thread(target=run_cam,daemon=True).start()
     if show_img:
         threading.Thread(target=disp_img,daemon=True).start()
-    http_server=WSGIServer((ip,port),app)
-    #http_server=WSGIServer((socket.gethostbyname(socket.gethostname()),2608),app)
-    #http_server=WSGIServer(('192.168.0.1',2608),app)
-    print(http_server.address)
-    http_server.serve_forever()
-
+    print(cam_server.address)
+    #http_server.serve_forever()
+    while True:
+        cam_server_greenlet=gevent.spawn(cam_server.serve_forever)
+        check_cable_greenlet=gevent.spawn(check_cable_periodically,cam_server)
+        gevent.joinall([cam_server_greenlet,check_cable_greenlet])
+        print('Checking cable status')
+        start=time.time()
+        while True:
+            if time.time()-start>=check_cable_interval:
+                if get_cable_status(net_interface):
+                    print('Cable plugged. Server is up')
+                    break
+                else:
+                    print('Cable unplugged')
+                    start=time.time()
     #app.run(host='0.0.0.0',port=2608,threaded=True)

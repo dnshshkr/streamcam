@@ -1,5 +1,5 @@
-import socket
-def get_ip_linux(interface: str) -> str:
+def get_ip_linux(interface:str)->str:
+    import socket
     import fcntl
     import struct
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -7,15 +7,9 @@ def get_ip_linux(interface: str) -> str:
     packed_addr = fcntl.ioctl(sock.fileno(), 0x8915, packed_iface)[20:24]
     return socket.inet_ntoa(packed_addr)
 
-def get_ip_windows():
-    """
-    Find my IP address
-    :return:
-    """
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", 80))
-    ip = s.getsockname()[0]
-    s.close()
-    return ip
+def get_ip_windows(interface:str)->str:
+    import psutil
+    interfaces = psutil.net_if_addrs()
+    return interfaces[interface][1].address
 
 #print(get_ip_linux('eth0'))
