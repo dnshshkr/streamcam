@@ -25,11 +25,10 @@ fps=None
 standby=cv2.imread('standby.jpg')
 standby=standby if convert_color else cv2.cvtColor(standby,cv2.COLOR_BGR2GRAY)
 sys_platform=platform.system().lower()
+net_interface=config['DEFAULT']['network_interface']
 if sys_platform=='linux':
-    net_interface='eth0'
     ip=get_ip.get_ip_linux(net_interface)
 elif sys_platform=='windows':
-    net_interface='Ethernet'
     ip=get_ip.get_ip_windows(net_interface)
 del sys_platform,platform,get_ip
 port=2608
