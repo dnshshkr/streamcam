@@ -28,7 +28,7 @@ sys_platform=platform.system().lower()
 net_interface=config['DEFAULT']['network_interface']
 gain_auto=config['DEFAULT']['gain_auto']
 exposure_auto=config['DEFAULT']['exposure_auto']
-exposure_time=config['DEFAULT']['exposure_time']
+exposure_time=float(config['DEFAULT']['exposure_time'])
 img_width=int(config['DEFAULT']['image_width'])
 img_height=int(config['DEFAULT']['image_height'])
 if sys_platform=='linux':
@@ -148,7 +148,7 @@ def check_cable_periodically(server):
 if __name__=='__main__':
     cam_server=WSGIServer((ip,port),app)
     camera_init()
-    time.sleep(0.5)
+    time.sleep(1)
     threading.Thread(target=run_cam,daemon=True).start()
     if show_img:
         threading.Thread(target=disp_img,daemon=True).start()
