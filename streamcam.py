@@ -4,40 +4,66 @@ import pypylon.pylon as py
 from gevent.pywsgi import WSGIServer
 import time
 import threading
+import platform
 import get_ip
+import configparser
 app=Flask(__name__)
-show_img=False #default is False to avoid lagging
-compression_percent=80
-convert_color=False
-put_fps=False
-ip=get_ip.get_ip_linux('eth0')
+config=configparser.ConfigParser()
+config.read('config.ini')
+show_img=True if config['DEFAULT']['show_image_locally']=='1' else False #default is False to avoid lagging
+img_quality=int(config['DEFAULT']['image_quality'])
+convert_color=True if config['DEFAULT']['colored_image']=='1' else False
+put_fps=True if config['DEFAULT']['put_fps']=='1' else False
+image=None
+camera=None
+camera_init_timeout=float(config['DEFAULT']['camera_initialization_timeout'])
+fps=None
+standby=cv2.imread('standby.jpg')
+standby=standby if convert_color else cv2.cvtColor(standby,cv2.COLOR_BGR2GRAY)
+sys_platform=platform.system().lower()
+if sys_platform=='linux':
+    ip=get_ip.get_ip_linux('eth0')
+elif sys_platform=='windows':
+    ip=get_ip.get_ip_windows()
+del sys_platform,platform,get_ip
 #ip='192.168.0.3'
 port=2608
-try:
-    camera=py.InstantCamera(py.TlFactory.GetInstance().CreateFirstDevice())
-    camera.Open()
-except Exception as e:
-    print(f'{e}: failed to access camera')
-    exit(0)
-else:
-    #camera.PixelFormat='RGB8'
-    camera.GainAuto.SetValue('Continuous')
-    camera.ExposureAuto.SetValue('Off')
-    camera.ExposureTime.SetValue(16600.0) #16600.0 for 60fps
-    camera.Width.SetValue(1920)
-    camera.Height.SetValue(1080)
-    # camera.OutputQueueSize.Value=50
-    # camera.StartGrabbing(py.GrabStrategy_LatestImages)
-    camera.StartGrabbing(py.GrabStrategy_LatestImageOnly)
-# converter=py.ImageFormatConverter()
-# converter.OutputPixelFormat=py.PixelType_BGR8packed
-# converter.OutputBitAlignment=py.OutputBitAlignment_MsbAligned
-image=None
-fps=None
+def camera_init():
+    if _camera_init_child():
+        return
+    start=time.time()
+    while True:
+        if time.time()-start>=camera_init_timeout:
+            print('Retrying to initialize camera')
+            if _camera_init_child():
+                return
+            else:
+                start=time.time()
+                continue
+def _camera_init_child():
+    global camera
+    try:
+        camera=py.InstantCamera(py.TlFactory.GetInstance().CreateFirstDevice())
+        camera.Open()
+    except Exception as e:
+        print(f'{e}: Failed to access camera')
+        return False
+    else:
+        camera.PixelFormat.Value='BGR8' if convert_color else 'Mono8' #BGR8 for color, Mono8 for gray
+        camera.GainAuto.SetValue('Continuous')
+        camera.ExposureAuto.SetValue('Off')
+        camera.ExposureTime.SetValue(16600.0) #16600.0 for 60fps
+        camera.Width.SetValue(1920)
+        camera.Height.SetValue(1080)
+        # camera.OutputQueueSize.Value=50
+        # camera.StartGrabbing(py.GrabStrategy_LatestImages)
+        camera.StartGrabbing(py.GrabStrategy_LatestImageOnly)
+        print('Camera initialization successful')
+        return True
 def disp_img():
-    time.sleep(1)
     while show_img:
-        cv2.putText(image,str(fps),(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
+        if put_fps:
+            cv2.putText(image,str(fps),(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
         cv2.imshow(f'{ip}:{port}/stream',image)
         cv2.waitKey(1)
 def run_cam():
@@ -45,13 +71,28 @@ def run_cam():
     frame=0
     fps=0
     start=time.time()
-    while camera.IsGrabbing():
+    while True:
         try:
             grabResult=camera.RetrieveResult(5000,py.TimeoutHandling_ThrowException)
-        except:
+        except py.TimeoutException:
+            print('Image grab timed out')
             continue
+        except:
+            if not camera.IsGrabbing():
+                global put_fps
+                put_fps_temp=None
+                if put_fps:
+                    put_fps_temp=True
+                    put_fps=False
+                image=standby
+                print('Camera has been disconnected. Retrying to reinitialize camera...')
+                camera.StopGrabbing()
+                camera.Close()
+                camera_init()
+                if put_fps_temp is not None and put_fps_temp:
+                    put_fps=True
         if grabResult.GrabSucceeded():
-            image=cv2.cvtColor(grabResult.Array,cv2.COLOR_RGB2BGR) if convert_color else grabResult.Array
+            image=grabResult.Array
             if put_fps:
                 cv2.putText(image,str(fps),(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
             #image=grabResult.Array
@@ -63,14 +104,12 @@ def run_cam():
                 print(f'{fps} fps',end='\r')
                 frame=0
                 start=time.time()
-        grabResult.Release()
-    camera.StopGrabbing()
-    camera.Close()
+            grabResult.Release()
 @app.route('/')
 def index():
     return 'Basler'
 def gen():
-    while camera.IsGrabbing():
+    while True:
         # frame_count=0
         # fps=0
         # start=time.time()
@@ -90,12 +129,12 @@ def gen():
         #         cv2.imshow('frame',image)
         #         cv2.waitKey(1)
         # grabResult.Release()
-        jpeg=cv2.imencode('.jpg',image,[int(cv2.IMWRITE_JPEG_QUALITY),compression_percent])[1]
+        jpeg=cv2.imencode('.jpg',image,[int(cv2.IMWRITE_JPEG_QUALITY),img_quality])[1]
         frame=jpeg.tobytes()
         yield(b'--frame\r\n'
-                b'Content-Type:image/jpeg\r\n'
-                b'Content-Length: '+f"{len(frame)}".encode()+b'\r\n'
-                b'\r\n'+frame+b'\r\n')
+              b'Content-Type:image/jpeg\r\n'
+              b'Content-Length: '+f"{len(frame)}".encode()+b'\r\n'
+              b'\r\n'+frame+b'\r\n')
         #grabResult.Release()
 
 
@@ -125,6 +164,8 @@ def gen():
 def stream():
     return Response(gen(),mimetype='multipart/x-mixed-replace; boundary=frame')
 if __name__=='__main__':
+    camera_init()
+    time.sleep(1)
     threading.Thread(target=run_cam,daemon=True).start()
     if show_img:
         threading.Thread(target=disp_img,daemon=True).start()
