@@ -98,7 +98,7 @@ def run_cam():
                     put_fps_temp=True
                     put_fps=False
                 image=standby
-                print('Camera has been disconnected. Retrying to reinitialize camera...')
+                print('Camera has been disconnected. Trying to reinitialize camera...')
                 camera.StopGrabbing()
                 camera.Close()
                 camera_init()
