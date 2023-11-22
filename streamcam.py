@@ -13,7 +13,7 @@ import configparser
 app=Flask(__name__)
 config=configparser.ConfigParser()
 config.read('config.ini')
-show_img=True if config['DEFAULT']['show_image_locally']=='1' else False #default is False to avoid lagging
+show_img=True if config['DEFAULT']['show_image_locally']=='1' else False
 img_quality=int(config['DEFAULT']['image_quality'])
 convert_color=True if config['DEFAULT']['colored_image']=='1' else False
 put_fps=True if config['DEFAULT']['put_fps']=='1' else False
@@ -31,7 +31,7 @@ if sys_platform=='linux':
 elif sys_platform=='windows':
     ip=get_ip.get_ip_windows(net_interface)
 del sys_platform,platform,get_ip
-port=2608
+port=int(config['DEFAULT']['port'])
 def camera_init():
     if _camera_init_child():
         return
