@@ -31,7 +31,6 @@ if sys_platform=='linux':
 elif sys_platform=='windows':
     net_interface='Ethernet'
     ip=get_ip.get_ip_windows(net_interface)
-    #ip='10.0.3.147'
 del sys_platform,platform,get_ip
 port=2608
 def camera_init():
