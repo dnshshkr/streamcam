@@ -26,6 +26,11 @@ standby=cv2.imread('standby.jpg')
 standby=standby if convert_color else cv2.cvtColor(standby,cv2.COLOR_BGR2GRAY)
 sys_platform=platform.system().lower()
 net_interface=config['DEFAULT']['network_interface']
+gain_auto=config['DEFAULT']['gain_auto']
+exposure_auto=config['DEFAULT']['exposure_auto']
+exposure_time=config['DEFAULT']['exposure_time']
+img_width=int(config['DEFAULT']['image_width'])
+img_height=int(config['DEFAULT']['image_height'])
 if sys_platform=='linux':
     ip=get_ip.get_ip_linux(net_interface)
 elif sys_platform=='windows':
@@ -54,11 +59,12 @@ def _camera_init_child():
         return False
     else:
         camera.PixelFormat.Value='BGR8' if convert_color else 'Mono8' #BGR8 for color, Mono8 for gray
-        camera.GainAuto.SetValue('Continuous')
-        camera.ExposureAuto.SetValue('Off')
-        camera.ExposureTime.SetValue(16600.0) #16600.0 for 60fps
-        camera.Width.SetValue(1920)
-        camera.Height.SetValue(1080)
+        camera.GainAuto.SetValue(gain_auto)
+        camera.ExposureAuto.SetValue(exposure_auto)
+        if exposure_auto!='Continuous':
+            camera.ExposureTime.SetValue(exposure_time)
+        camera.Width.SetValue(img_width)
+        camera.Height.SetValue(img_height)
         # camera.OutputQueueSize.Value=50
         # camera.StartGrabbing(py.GrabStrategy_LatestImages)
         camera.StartGrabbing(py.GrabStrategy_LatestImageOnly)
