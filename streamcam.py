@@ -30,6 +30,7 @@ del configparser,config
 image=None
 camera=None
 fps=None
+master_loop=True
 sys_platform=platform.system().lower()
 CAMERA_USB_DISCONNECTED='Camera USB disconnected'
 class CameraUSBDisconnectedError(Exception):
@@ -95,8 +96,8 @@ def _camera_init_child():
 def close_cam():
     camera.StopGrabbing()
     camera.Close()
-def disp_img():
-    while show_img:
+def disp_img(loop):
+    while show_img and loop():
         if put_fps:
             cv2.putText(image,str(fps),(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
         cv2.imshow(f'{ip}:{port}/stream',image)
@@ -119,7 +120,7 @@ def run_cam():
     fps=0
     grab_retry_count=0
     start=time.time()
-    while True:
+    while master_loop:
         try:
             grabResult=camera.RetrieveResult(4000,py.TimeoutHandling_ThrowException)
         except py.TimeoutException:
@@ -145,17 +146,21 @@ def run_cam():
                 frame=0
                 start=time.time()
             grabResult.Release()
+    else:
+        print('run_cam() ended')
+        close_cam()
 @app.route('/')
 def index():
     return 'Basler'
 def gen():
-    while True:
-        jpeg=cv2.imencode('.jpg',image,[int(cv2.IMWRITE_JPEG_QUALITY),img_quality])[1]
+    while master_loop:
+        jpeg=cv2.imencode('.jpg',image,(int(cv2.IMWRITE_JPEG_QUALITY),img_quality))[1]
         frame=jpeg.tobytes()
         yield(b'--frame\r\n'
               b'Content-Type:image/jpeg\r\n'
               b'Content-Length: '+f"{len(frame)}".encode()+b'\r\n'
               b'\r\n'+frame+b'\r\n')
+    print('gen() ended')
 @app.route('/stream')
 def stream():
     return Response(gen(),mimetype='multipart/x-mixed-replace; boundary=frame')
@@ -166,30 +171,43 @@ def get_cable_status(interface_name):
     else:
         return False
 def check_cable_periodically(server):
-    while True:
+    while master_loop:
         if not get_cable_status(net_interface):
             print('Cable might have been unplugged. Server will be stopped')
             server.stop()
             break
         gevent.sleep(check_cable_interval)
+    else:
+        server.stop()
+        print('Server stopped')
 if __name__=='__main__':
     cam_server=WSGIServer((ip,port),app)
     camera_init()
-    threading.Thread(target=run_cam,daemon=True).start()
+    run_cam_thread=threading.Thread(target=run_cam,daemon=True)
+    run_cam_thread.start()
     if show_img:
-        threading.Thread(target=disp_img,daemon=True).start()
+        disp_img_thread=threading.Thread(target=disp_img,daemon=True)
+        disp_img_thread.start()
     print(cam_server.address)
     while True:
-        cam_server_greenlet=gevent.spawn(cam_server.serve_forever)
-        print('Server is up')
-        check_cable_greenlet=gevent.spawn(check_cable_periodically,cam_server)
-        gevent.joinall([cam_server_greenlet,check_cable_greenlet])
-        print('Checking cable status')
+        try:
+            cam_server_greenlet=gevent.spawn(cam_server.serve_forever)
+            print('Server is up')
+            check_cable_greenlet=gevent.spawn(check_cable_periodically,cam_server)
+            gevent.joinall([cam_server_greenlet,check_cable_greenlet])
+        except KeyboardInterrupt:
+            master_loop=False
+            gevent.joinall([cam_server_greenlet,check_cable_greenlet])
+            run_cam_thread.join()
+            if show_img:
+                disp_img_thread.join()
+            exit()
+        print('Checking ethernet cable status')
         start=time.time()
         while True:
             if time.time()-start>=check_cable_interval:
                 if get_cable_status(net_interface):
-                    print('Ethernet cable plugged')
+                    print('Ethernet cable plugged in')
                     break
                 else:
                     print('Ethernet cable unplugged')
