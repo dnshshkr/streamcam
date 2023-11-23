@@ -132,7 +132,8 @@ def run_cam():
         except CameraUSBDisconnectedError:
             _usb_disconn_routine()
         except:
-            _usb_disconn_routine()
+            if not camera.IsGrabbing():
+                _usb_disconn_routine()
         if grabResult.GrabSucceeded():
             image=grabResult.Array
             if put_fps:
