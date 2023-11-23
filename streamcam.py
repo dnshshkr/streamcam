@@ -103,7 +103,7 @@ def run_cam():
     start=time.time()
     while True:
         try:
-            grabResult=camera.RetrieveResult(5000,py.TimeoutHandling_ThrowException)
+            grabResult=camera.RetrieveResult(4000,py.TimeoutHandling_ThrowException)
         except py.TimeoutException:
             print('Image grab timed out')
             continue
@@ -125,7 +125,6 @@ def run_cam():
             image=grabResult.Array
             if put_fps:
                 cv2.putText(image,str(fps),(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
-            #image=grabResult.Array
             frame+=1
             stop=time.time()
             duration=stop-start
@@ -154,7 +153,7 @@ def get_cable_status(interface_name):
     if interface_name in network_info:
         return network_info[interface_name].isup
     else:
-        return False  # If interface is not found, consider it disconnected
+        return False
 def check_cable_periodically(server):
     while True:
         if not get_cable_status(net_interface):
@@ -170,7 +169,6 @@ if __name__=='__main__':
     if show_img:
         threading.Thread(target=disp_img,daemon=True).start()
     print(cam_server.address)
-    #http_server.serve_forever()
     while True:
         cam_server_greenlet=gevent.spawn(cam_server.serve_forever)
         print('Server is up')
@@ -181,8 +179,8 @@ if __name__=='__main__':
         while True:
             if time.time()-start>=check_cable_interval:
                 if get_cable_status(net_interface):
-                    print('Cable plugged')
+                    print('Ethernet cable plugged')
                     break
                 else:
-                    print('Cable unplugged')
+                    print('Ethernet cable unplugged')
                     start=time.time()
