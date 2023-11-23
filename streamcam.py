@@ -43,7 +43,7 @@ except FileNotFoundError as e:
     text_y=(img_height+text_size[1])//2
     cv2.putText(standby,CAMERA_USB_DISCONNECTED,(text_x,text_y),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,255),2)
     cv2.imwrite('standby.jpg',standby)
-    del np
+    del np,text_size,text_x,text_y
 else:
     standby=standby if colored else cv2.cvtColor(standby,cv2.COLOR_BGR2GRAY)
 if sys_platform=='linux':
