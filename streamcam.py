@@ -17,18 +17,20 @@ show_img=True if config['DEFAULT']['show_image_locally']=='1' else False
 img_quality=int(config['DEFAULT']['image_quality'])
 colored=True if config['DEFAULT']['colored_image']=='1' else False
 put_fps=True if config['DEFAULT']['put_fps']=='1' else False
-image=None
-camera=None
 camera_init_timeout=float(config['DEFAULT']['camera_initialization_timeout'])
 check_cable_interval=int(config['DEFAULT']['check_cable_interval'])
-fps=None
-sys_platform=platform.system().lower()
 net_interface=config['DEFAULT']['network_interface']
 gain_auto=config['DEFAULT']['gain_auto']
 exposure_auto=config['DEFAULT']['exposure_auto']
 exposure_time=float(config['DEFAULT']['exposure_time'])
 img_width=int(config['DEFAULT']['image_width'])
 img_height=int(config['DEFAULT']['image_height'])
+port=int(config['DEFAULT']['port'])
+del configparser,config
+image=None
+camera=None
+fps=None
+sys_platform=platform.system().lower()
 CAMERA_USB_DISCONNECTED='Camera USB disconnected'
 try:
     standby=cv2.imread('standby.jpg')
@@ -38,12 +40,13 @@ except FileNotFoundError as e:
     print(e)
     import numpy as np
     standby=np.zeros((img_height,img_width,3 if colored else 1),dtype=np.uint8)
-    text_size=cv2.getTextSize(CAMERA_USB_DISCONNECTED,cv2.FONT_HERSHEY_SIMPLEX,1,2)[0]
+    font,scale,thickness=cv2.FONT_HERSHEY_SIMPLEX,3,3
+    text_size=cv2.getTextSize(CAMERA_USB_DISCONNECTED,cv2.FONT_HERSHEY_SIMPLEX,scale,thickness)[0]
     text_x=(img_width-text_size[0])//2
     text_y=(img_height+text_size[1])//2
-    cv2.putText(standby,CAMERA_USB_DISCONNECTED,(text_x,text_y),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,255),2)
+    cv2.putText(standby,CAMERA_USB_DISCONNECTED,(text_x,text_y),cv2.FONT_HERSHEY_SIMPLEX,scale,(255,255,255),thickness)
     cv2.imwrite('standby.jpg',standby)
-    del np,text_size,text_x,text_y
+    del np,font,scale,thickness,text_size,text_x,text_y
 else:
     standby=standby if colored else cv2.cvtColor(standby,cv2.COLOR_BGR2GRAY)
 if sys_platform=='linux':
@@ -51,7 +54,6 @@ if sys_platform=='linux':
 elif sys_platform=='windows':
     ip=get_ip.get_ip_windows(net_interface)
 del sys_platform,platform,get_ip
-port=int(config['DEFAULT']['port'])
 def camera_init():
     if _camera_init_child():
         return
