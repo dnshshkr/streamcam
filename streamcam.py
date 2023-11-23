@@ -15,15 +15,13 @@ config=configparser.ConfigParser()
 config.read('config.ini')
 show_img=True if config['DEFAULT']['show_image_locally']=='1' else False
 img_quality=int(config['DEFAULT']['image_quality'])
-convert_color=True if config['DEFAULT']['colored_image']=='1' else False
+colored=True if config['DEFAULT']['colored_image']=='1' else False
 put_fps=True if config['DEFAULT']['put_fps']=='1' else False
 image=None
 camera=None
 camera_init_timeout=float(config['DEFAULT']['camera_initialization_timeout'])
 check_cable_interval=int(config['DEFAULT']['check_cable_interval'])
 fps=None
-standby=cv2.imread('standby.jpg')
-standby=standby if convert_color else cv2.cvtColor(standby,cv2.COLOR_BGR2GRAY)
 sys_platform=platform.system().lower()
 net_interface=config['DEFAULT']['network_interface']
 gain_auto=config['DEFAULT']['gain_auto']
@@ -31,6 +29,23 @@ exposure_auto=config['DEFAULT']['exposure_auto']
 exposure_time=float(config['DEFAULT']['exposure_time'])
 img_width=int(config['DEFAULT']['image_width'])
 img_height=int(config['DEFAULT']['image_height'])
+CAMERA_USB_DISCONNECTED='Camera USB disconnected'
+try:
+    standby=cv2.imread('standby.jpg')
+    if standby is None:
+        raise FileNotFoundError('standby.jpg not found. Creating new one')
+except FileNotFoundError as e:
+    print(e)
+    import numpy as np
+    standby=np.zeros((img_height,img_width,3 if colored else 1),dtype=np.uint8)
+    text_size=cv2.getTextSize(CAMERA_USB_DISCONNECTED,cv2.FONT_HERSHEY_SIMPLEX,1,2)[0]
+    text_x=(img_width-text_size[0])//2
+    text_y=(img_height+text_size[1])//2
+    cv2.putText(standby,CAMERA_USB_DISCONNECTED,(text_x,text_y),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,255),2)
+    cv2.imwrite('standby.jpg',standby)
+    del np
+else:
+    standby=standby if colored else cv2.cvtColor(standby,cv2.COLOR_BGR2GRAY)
 if sys_platform=='linux':
     ip=get_ip.get_ip_linux(net_interface)
 elif sys_platform=='windows':
@@ -58,7 +73,7 @@ def _camera_init_child():
         print(f'{e}: Failed to access camera')
         return False
     else:
-        camera.PixelFormat.Value='BGR8' if convert_color else 'Mono8' #BGR8 for color, Mono8 for gray
+        camera.PixelFormat.Value='BGR8' if colored else 'Mono8' #BGR8 for color, Mono8 for gray
         camera.GainAuto.SetValue(gain_auto)
         camera.ExposureAuto.SetValue(exposure_auto)
         if exposure_auto!='Continuous':
