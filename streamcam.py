@@ -32,6 +32,10 @@ camera=None
 fps=None
 sys_platform=platform.system().lower()
 CAMERA_USB_DISCONNECTED='Camera USB disconnected'
+class CameraUSBDisconnectedError(Exception):
+    def __init__(self):
+        super().__init__()
+        self.msg='Camera has been disconnected'
 try:
     standby=cv2.imread('standby.jpg')
     if standby is None:
@@ -56,6 +60,7 @@ elif sys_platform=='windows':
 del sys_platform,platform,get_ip
 def camera_init():
     if _camera_init_child():
+        time.sleep(1)
         return
     start=time.time()
     while True:
@@ -96,31 +101,37 @@ def disp_img():
             cv2.putText(image,str(fps),(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
         cv2.imshow(f'{ip}:{port}/stream',image)
         cv2.waitKey(1)
+def _usb_disconn_routine():
+    global put_fps,image
+    put_fps_temp=None
+    if put_fps:
+        put_fps_temp=True
+        put_fps=False
+    image=standby
+    print('Camera has been disconnected. Trying to reinitialize camera...')
+    close_cam()
+    camera_init()
+    if put_fps_temp is not None and put_fps_temp:
+        put_fps=True
 def run_cam():
     global image,fps
     frame=0
     fps=0
+    grab_retry_count=0
     start=time.time()
     while True:
         try:
             grabResult=camera.RetrieveResult(4000,py.TimeoutHandling_ThrowException)
         except py.TimeoutException:
+            grab_retry_count+=1
+            if grab_retry_count>=3:
+                raise CameraUSBDisconnectedError()
             print('Image grab timed out')
             continue
+        except CameraUSBDisconnectedError:
+            _usb_disconn_routine()
         except:
-            if not camera.IsGrabbing():
-                global put_fps
-                put_fps_temp=None
-                if put_fps:
-                    put_fps_temp=True
-                    put_fps=False
-                image=standby
-                print('Camera has been disconnected. Trying to reinitialize camera...')
-                camera.StopGrabbing()
-                camera.Close()
-                camera_init()
-                if put_fps_temp is not None and put_fps_temp:
-                    put_fps=True
+            _usb_disconn_routine()
         if grabResult.GrabSucceeded():
             image=grabResult.Array
             if put_fps:
@@ -164,7 +175,6 @@ def check_cable_periodically(server):
 if __name__=='__main__':
     cam_server=WSGIServer((ip,port),app)
     camera_init()
-    time.sleep(1)
     threading.Thread(target=run_cam,daemon=True).start()
     if show_img:
         threading.Thread(target=disp_img,daemon=True).start()
