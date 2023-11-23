@@ -1,5 +1,6 @@
 from flask import Flask,Response
 import cv2
+import matplotlib.pyplot as plt
 import pypylon.pylon as py
 import gevent
 from gevent.pywsgi import WSGIServer
@@ -97,11 +98,19 @@ def close_cam():
     camera.StopGrabbing()
     camera.Close()
 def disp_img(loop):
-    while show_img and loop():
+    #if using matplotlib
+    plt.axis('off')
+    plt.title(f'{ip}:{port}/stream')
+    while show_img and master_loop:
         if put_fps:
             cv2.putText(image,str(fps),(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
-        cv2.imshow(f'{ip}:{port}/stream',image)
-        cv2.waitKey(1)
+        #if using opencv
+        # cv2.imshow(f'{ip}:{port}/stream',image)
+        # cv2.waitKey(1)
+        #if using matplotlib
+        plt.imshow(image)
+        plt.clf()
+    plt.close()
 def _usb_disconn_routine():
     global put_fps,image
     put_fps_temp=None
@@ -174,7 +183,7 @@ def get_cable_status(interface_name):
 def check_cable_periodically(server):
     while master_loop:
         if not get_cable_status(net_interface):
-            print('Cable might have been unplugged. Server will be stopped')
+            print(f'{net_interface} cable might have been unplugged. Server will be stopped')
             server.stop()
             break
         gevent.sleep(check_cable_interval)
