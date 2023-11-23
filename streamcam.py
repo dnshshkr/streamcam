@@ -208,8 +208,8 @@ if __name__=='__main__':
         while True:
             if time.time()-start>=check_cable_interval:
                 if get_cable_status(net_interface):
-                    print('Ethernet cable plugged in')
+                    print(f'{net_interface} is up')
                     break
                 else:
-                    print('Ethernet cable unplugged')
+                    print(f'{net_interface} is down')
                     start=time.time()
