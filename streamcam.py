@@ -97,19 +97,12 @@ def _camera_init_child():
 def close_cam():
     camera.StopGrabbing()
     camera.Close()
-def disp_img(loop):
-    #if using matplotlib
-    plt.axis('off')
-    plt.title(f'{ip}:{port}/stream')
+def disp_img():
     while show_img and master_loop:
         if put_fps:
             cv2.putText(image,str(fps),(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
-        #if using opencv
-        # cv2.imshow(f'{ip}:{port}/stream',image)
-        # cv2.waitKey(1)
-        #if using matplotlib
-        plt.imshow(image)
-        plt.clf()
+        cv2.imshow(f'{ip}:{port}/stream',image)
+        cv2.waitKey(1)
     plt.close()
 def _usb_disconn_routine():
     global put_fps,image
