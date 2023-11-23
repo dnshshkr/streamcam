@@ -148,11 +148,11 @@ def run_cam():
                 start=time.time()
             grabResult.Release()
     else:
-        print('run_cam() ended')
         close_cam()
+        print('run_cam() ended')
 @app.route('/')
 def index():
-    return 'Basler'
+    return 'Copyright Delloyd©'
 def gen():
     while master_loop:
         jpeg=cv2.imencode('.jpg',image,(int(cv2.IMWRITE_JPEG_QUALITY),img_quality))[1]
