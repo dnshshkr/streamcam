@@ -1,6 +1,5 @@
 from flask import Flask,Response
 import cv2
-import matplotlib.pyplot as plt
 import pypylon.pylon as py
 import gevent
 from gevent.pywsgi import WSGIServer
