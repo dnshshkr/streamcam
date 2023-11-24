@@ -102,7 +102,6 @@ def disp_img():
             cv2.putText(image,str(fps),(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
         cv2.imshow(f'{ip}:{port}/stream',image)
         cv2.waitKey(1)
-    plt.close()
 def _usb_disconn_routine():
     global put_fps,image
     put_fps_temp=None
