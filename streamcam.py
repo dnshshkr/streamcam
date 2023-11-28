@@ -102,7 +102,6 @@ def close_cam():
     camera.StopGrabbing()
     camera.Close()
 def disp_img():
-<<<<<<< HEAD
     winname=f'{ip}:{port}/stream'
     while master_loop:
         try:
@@ -112,13 +111,6 @@ def disp_img():
         else:
             cv2.waitKey(1)
     cv2.destroyWindow(winname)
-=======
-    while show_img and master_loop:
-        if put_fps:
-            cv2.putText(image,str(fps),(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
-        cv2.imshow(f'{ip}:{port}/stream',image)
-        cv2.waitKey(1)
->>>>>>> a48a0f0d022d53f9ae285187ed019cc51708b6f7
 def _usb_disconn_routine():
     global put_fps,image
     put_fps_temp=None
