@@ -1,7 +1,6 @@
 from flask import Flask,Response
 import cv2
-import matplotlib.pyplot as plt
-import pypylon.pylon as py
+import pypylon.pylon as pylon
 import gevent
 from gevent.pywsgi import WSGIServer
 import gevent
@@ -11,6 +10,7 @@ import threading
 import platform
 import get_ip
 import configparser
+print(f'pypylon version: {pylon.__version__}\nOpenCV version: {cv2.__version__}')
 app=Flask(__name__)
 config=configparser.ConfigParser()
 config.read('config.ini')
@@ -62,7 +62,7 @@ elif sys_platform=='windows':
 del sys_platform,platform,get_ip
 def camera_init():
     if _camera_init_child():
-        time.sleep(1)
+        time.sleep(1.5)
         return
     start=time.time()
     while True:
@@ -76,34 +76,41 @@ def camera_init():
 def _camera_init_child():
     global camera
     try:
-        camera=py.InstantCamera(py.TlFactory.GetInstance().CreateFirstDevice())
+        tlf=pylon.TlFactory.GetInstance()
+        devices=tlf.EnumerateDevices()
+        camera=pylon.InstantCamera(tlf.CreateDevice(devices[0]))
+        #camera=pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
         camera.Open()
     except Exception as e:
         print(f'{e}: Failed to access camera')
         return False
     else:
+        print("Using device ", camera.GetDeviceInfo().GetModelName())
         camera.PixelFormat.Value='BGR8' if colored else 'Mono8' #BGR8 for color, Mono8 for gray
         camera.GainAuto.SetValue(gain_auto)
         camera.ExposureAuto.SetValue(exposure_auto)
-        if exposure_auto!='Continuous':
+        if exposure_auto=='Off':
             camera.ExposureTime.SetValue(exposure_time)
         camera.Width.SetValue(img_width)
         camera.Height.SetValue(img_height)
         # camera.OutputQueueSize.Value=50
-        # camera.StartGrabbing(py.GrabStrategy_LatestImages)
-        camera.StartGrabbing(py.GrabStrategy_LatestImageOnly)
+        # camera.StartGrabbing(pylon.GrabStrategy_LatestImages)
+        camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
         print('Camera initialization successful')
         return True
 def close_cam():
     camera.StopGrabbing()
     camera.Close()
 def disp_img():
-    while show_img and master_loop:
-        if put_fps:
-            cv2.putText(image,str(fps),(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2)
-        cv2.imshow(f'{ip}:{port}/stream',image)
-        cv2.waitKey(1)
-    plt.close()
+    winname=f'{ip}:{port}/stream'
+    while master_loop:
+        try:
+            cv2.imshow(winname,image)
+        except cv2.error:
+            pass
+        else:
+            cv2.waitKey(1)
+    cv2.destroyWindow(winname)
 def _usb_disconn_routine():
     global put_fps,image
     put_fps_temp=None
@@ -124,8 +131,8 @@ def run_cam():
     start=time.time()
     while master_loop:
         try:
-            grabResult=camera.RetrieveResult(4000,py.TimeoutHandling_ThrowException)
-        except py.TimeoutException:
+            grabResult=camera.RetrieveResult(4000,pylon.TimeoutHandling_ThrowException)
+        except pylon.TimeoutException:
             grab_retry_count+=1
             if grab_retry_count>=3:
                 raise CameraUSBDisconnectedError()
