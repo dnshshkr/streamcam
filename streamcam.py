@@ -55,9 +55,11 @@ except FileNotFoundError as e:
     del np,font,scale,thickness,text_size,text_x,text_y
 else:
     standby=standby if colored else cv2.cvtColor(standby,cv2.COLOR_BGR2GRAY)
-if sys_platform=='linux':
+if net_interface.lower()=='localhost':
+    ip='localhost'
+elif net_interface.lower()!='localhost' and sys_platform=='linux':
     ip=get_ip.get_ip_linux(net_interface)
-elif sys_platform=='windows':
+elif net_interface.lower()!='localhost' and sys_platform=='windows':
     ip=get_ip.get_ip_windows(net_interface)
 del sys_platform,platform,get_ip
 def camera_init():
@@ -199,6 +201,15 @@ if __name__=='__main__':
         disp_img_thread=threading.Thread(target=disp_img,daemon=True)
         disp_img_thread.start()
     print(cam_server.address)
+    if net_interface.lower()=='localhost':
+        try:
+            cam_server.serve_forever()
+        except KeyboardInterrupt:
+            master_loop=False
+            run_cam_thread.join() 
+            if show_img:
+                disp_img_thread.join()
+            exit()           
     while True:
         try:
             cam_server_greenlet=gevent.spawn(cam_server.serve_forever)
