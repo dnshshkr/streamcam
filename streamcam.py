@@ -202,11 +202,13 @@ if __name__=='__main__':
         disp_img_thread.start()
     print(cam_server.address)
     if net_interface.lower()=='localhost':
+        cam_server_greenlet=None
         try:
             cam_server.serve_forever()
         except KeyboardInterrupt:
             master_loop=False
-            run_cam_thread.join() 
+            cam_server.stop()
+            run_cam_thread.join()
             if show_img:
                 disp_img_thread.join()
             exit()           
