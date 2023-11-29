@@ -1,7 +1,7 @@
 
 from flask import Flask,Response
 import cv2
-import pypylon._pylon,pypylon._genicam
+#import pypylon._pylon,pypylon._genicam
 import pypylon.pylon as pylon
 import gevent
 from gevent.pywsgi import WSGIServer
