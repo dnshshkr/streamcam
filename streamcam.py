@@ -3,8 +3,7 @@ from sys import exit
 import platform
 from flask import Flask,Response
 import cv2
-if platform.system().lower()=='windows':
-    import pypylon._pylon,pypylon._genicam
+#import pypylon._pylon,pypylon._genicam #comment this line when compiling for linux
 import pypylon.pylon as pylon
 import gevent
 from gevent.pywsgi import WSGIServer
@@ -114,7 +113,8 @@ def disp_img():
     while master_loop:
         try:
             cv2.imshow(winname,image)
-        except cv2.error:
+        except cv2.error as e:
+            print(e)
             pass
         else:
             cv2.waitKey(1)
