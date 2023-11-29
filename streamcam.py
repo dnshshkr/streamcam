@@ -1,7 +1,10 @@
 
+from sys import exit
+import platform
 from flask import Flask,Response
 import cv2
-#import pypylon._pylon,pypylon._genicam
+if platform.system().lower()=='windows':
+    import pypylon._pylon,pypylon._genicam
 import pypylon.pylon as pylon
 import gevent
 from gevent.pywsgi import WSGIServer
@@ -9,11 +12,10 @@ import gevent
 import psutil
 import time
 import threading
-import platform
 import get_ip
 import configparser
 ljust_space=16
-print(f'{"OpenCV version".ljust(ljust_space)}: {cv2.__version__}\n{"pypylon version".ljust(ljust_space)}: {pylon.__version__}')
+print(f'Copyright© 2023 Delloyd\n\n{"OpenCV version".ljust(ljust_space)}: {cv2.__version__}\n{"pypylon version".ljust(ljust_space)}: {pylon.__version__}')
 app=Flask(__name__)
 config=configparser.ConfigParser()
 config.read('config.ini')
@@ -164,10 +166,10 @@ def run_cam():
             grabResult.Release()
     else:
         close_cam()
-        print('run_cam() ended')
+        print('Camera closed')
 @app.route('/')
 def index():
-    return 'Copyright© Delloyd'
+    return 'Copyright© 2023 Delloyd'
 def gen():
     while master_loop:
         jpeg=cv2.imencode('.jpg',image,(int(cv2.IMWRITE_JPEG_QUALITY),img_quality))[1]
