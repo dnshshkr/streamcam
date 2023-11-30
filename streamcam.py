@@ -3,7 +3,7 @@ from sys import exit
 import platform
 from flask import Flask,Response
 import cv2
-#import pypylon._pylon,pypylon._genicam #comment this line when compiling for linux
+#import pypylon._pylon,pypylon._genicam #comment this line when compiling for linux, uncommenet when compiling for windows
 import pypylon.pylon as pylon
 import gevent
 from gevent.pywsgi import WSGIServer
@@ -40,8 +40,8 @@ sys_platform=platform.system().lower()
 CAMERA_USB_DISCONNECTED='Camera USB disconnected'
 class CameraUSBDisconnectedError(Exception):
     def __init__(self):
-        super().__init__()
-        self.msg='Camera has been disconnected'
+        self.msg='Camera is disconnected'
+        super().__init__(self.msg)
 try:
     standby=cv2.imread('standby.jpg')
     if standby is None:
@@ -79,15 +79,17 @@ def camera_init():
             else:
                 start=time.time()
                 continue
-def _camera_init_child():
+def _camera_init_child()->bool:
     global camera
     try:
         tlf=pylon.TlFactory.GetInstance()
         devices=tlf.EnumerateDevices()
+        if len(devices)==0:
+            raise CameraUSBDisconnectedError
         camera=pylon.InstantCamera(tlf.CreateDevice(devices[0]))
         #camera=pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
         camera.Open()
-    except Exception as e:
+    except CameraUSBDisconnectedError as e:
         print(f'{e}: Failed to access camera')
         return False
     else:
@@ -126,7 +128,7 @@ def _usb_disconn_routine():
         put_fps_temp=True
         put_fps=False
     image=standby
-    print('Camera has been disconnected. Trying to reinitialize camera...')
+    #print('Trying to reinitialize camera...')
     close_cam()
     camera_init()
     if put_fps_temp is not None and put_fps_temp:
