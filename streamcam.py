@@ -3,7 +3,7 @@ from sys import exit
 import platform
 from flask import Flask,Response
 import cv2
-import pypylon._pylon,pypylon._genicam #comment this line when compiling for linux, uncommenet when compiling for windows
+import pypylon._pylon,pypylon._genicam #comment this line when compiling for linux, uncomment when compiling for windows
 import pypylon.pylon as pylon
 import gevent
 from gevent.pywsgi import WSGIServer
