@@ -1,4 +1,4 @@
-
+__version__='1.1'
 from sys import exit
 import platform
 from flask import Flask,Response
@@ -14,7 +14,7 @@ import threading
 import get_ip
 import configparser
 ljust_space=16
-print(f'Copyright© 2023 Delloyd\n\n{"OpenCV version".ljust(ljust_space)}: {cv2.__version__}\n{"pypylon version".ljust(ljust_space)}: {pylon.__version__}')
+print(f'Copyright© 2023 Delloyd\n\n{"Version".ljust(ljust_space)}: {__version__}\n{"OpenCV version".ljust(ljust_space)}: {cv2.__version__}\n{"pypylon version".ljust(ljust_space)}: {pylon.__version__}')
 app=Flask(__name__)
 config=configparser.ConfigParser()
 config.read('config.ini')
