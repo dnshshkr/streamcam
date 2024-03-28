@@ -35,11 +35,11 @@ exposure_time=float(config['DEFAULT']['exposure_time'])
 img_width=int(config['DEFAULT']['image_width'])
 img_height=int(config['DEFAULT']['image_height'])
 port=int(config['DEFAULT']['port'])
-del ConfigParser,config,ljust_space
 image=None
 camera=None
 master_loop=Event()
 sys_platform=platform_system().lower()
+del ConfigParser,config,ljust_space,platform_system
 CAMERA_USB_DISCONNECTED='Camera USB disconnected'
 class CameraUSBDisconnectedError(Exception):
     def __init__(self):
